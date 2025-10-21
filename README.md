@@ -1,4 +1,4 @@
-🐤 Flappy Bird com JavaScript e HTML.
+🐤 Flappy Bird com JavaScript e HTML (AINDA EM DESENVOLVIMENTO!).
 
 Um projeto simples e divertido onde estarei recriando o clássico Flappy Bird usando apenas JavaScript, HTML e Canvas.
 O objetivo foi praticar lógica de programação, detecção de colisão e manipulação de elementos gráficos no navegador.
