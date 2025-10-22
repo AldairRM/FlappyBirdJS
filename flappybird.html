@@ -29,6 +29,9 @@
   //Setando valores das dimensões
   const W = canvas.width, H = canvas.height;
   const CHAO_H = 90;
+  
+  let game = {running:false,over:false,score:0};
+  let frames = 0;
 
   // carregamento de imagens
   const images = {};
@@ -48,18 +51,49 @@
   };
 
   function draw(){
+  
+    // telas de status
+    if(!game.running && !game.over){
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(40, 200, W-80, 100);
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Clique ou Espaço para começar', W/2, 255);
+      ctx.textAlign = 'start';
+    }
     // fundo
     ctx.drawImage(images['fundo'], 0, 0, W, H);
 
     // chão
-    ctx.drawImage(images['chao'], 0, H - GROUND_H, W, GROUND_H);
+    ctx.drawImage(images['chao'], 0, H - CHAO_H, W, CHAO_H);
 
+  }
+  
+   function update(){
+    frames++;
+	
+	// TODO:
+    // mover canos e verificar colisão
+
+    // colisão com o chão
+  }
+
+  
+    function loop(){
+    if(game.running && !game.over) update();
+    draw();
+    requestAnimationFrame(loop);
   }
 
   // iniciar após carregar imagens
   loadImages().then(()=>{
     draw();
+	loop();
   });
+  
+  
+
   </script>
 </body>
 </html>
