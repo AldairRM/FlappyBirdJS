@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Flappy Bird do Aldair</title>
+  <title>Flappy Bird com Sprites</title>
   <style>
     html,body {
       height: 100%;
@@ -26,74 +26,193 @@
   <script>
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  //Setando valores das dimensões
-  const W = canvas.width, H = canvas.height;
-  const CHAO_H = 90;
-  
-  let game = {running:false,over:false,score:0};
-  let frames = 0;
+  const LARGURA = canvas.width, ALTURA = canvas.height;
 
-  // carregamento de imagens
-  const images = {};
-  const loadImages = () => {
-    const list = ['chao','fundo'];
-    let loaded = 0;
-    return new Promise(resolve=>{
-      list.forEach(name=>{
+  // carregar imagens
+  const imagens = {};
+  const carregarImagens = () => {
+    const lista = ['fundo','chao','aldair','cano-topo','cano-base'];
+    let carregadas = 0;
+    return new Promise(resolver=>{
+      lista.forEach(nome=>{
         const img = new Image();
-        img.src = `assets/${name}.png`;
+        img.src = `assets/${nome}.png`;
         img.onload = () => {
-          images[name] = img;
-          if(++loaded === list.length) resolve();
+          imagens[nome] = img;
+          if(++carregadas === lista.length) resolver();
         };
       });
     });
   };
 
-  function draw(){
-  
-    // telas de status
-    if(!game.running && !game.over){
+  const ALTURA_CHAO = 90;
+  const ESPACO_CANO = 140;
+  const LARGURA_CANO = 60;
+
+  let quadros = 0;
+  let canos = [];
+
+  const passaro = {x:80,y:ALTURA/2,w:34,h:24,vy:0,gravidade:0.6,pulo:-10,rotacao:0};
+  let jogo = {rodando:false,fim:false,pontuacao:0,melhor:Number(localStorage.getItem('flappy_best')||0)};
+
+  function irParaGithub() {
+    window.location.href = "https://github.com/AldairRM/";
+  }
+
+  function reiniciar(){
+    quadros = 0;
+    jogo.rodando = false;
+    jogo.fim = false;
+    jogo.pontuacao = 0;
+    passaro.y = ALTURA/2; passaro.vy = 0; passaro.rotacao = 0;
+    canos = [];
+  }
+
+  function gerarCano(){
+    const minY = 80;
+    const maxY = ALTURA - ALTURA_CHAO - ESPACO_CANO - 40;
+    const topo = minY + Math.random()*(maxY-minY);
+    canos.push({x:LARGURA, topo, passou:false});
+  }
+
+  function baterAsa(){
+    passaro.vy = passaro.pulo;
+    jogo.rodando = true;
+  }
+
+  function colisaoRetanguloCirculo(ret, c){
+    const cx = c.x, cy = c.y;
+    const rx = ret.x, ry = ret.y, rw = ret.w, rh = ret.h;
+    const maisProxX = Math.max(rx, Math.min(cx, rx+rw));
+    const maisProxY = Math.max(ry, Math.min(cy, ry+rh));
+    const dx = cx - maisProxX;
+    const dy = cy - maisProxY;
+    const r = Math.max(c.w, c.h)/2 - 2;
+    return (dx*dx + dy*dy) <= r*r;
+  }
+
+  function atualizar(){
+    quadros++;
+    passaro.vy += passaro.gravidade;
+    passaro.y += passaro.vy;
+    passaro.rotacao = Math.max(-0.6, Math.min(1.2, passaro.vy/15));
+
+    if(quadros % 110 === 0) gerarCano();
+
+    for(let i=canos.length-1;i>=0;i--){
+      const c = canos[i];
+      c.x -= 2.8;
+
+      const canoTopo = {x:c.x, y:0, w:LARGURA_CANO, h:c.topo};
+      const canoBase = {x:c.x, y:c.topo + ESPACO_CANO, w:LARGURA_CANO, h:ALTURA - ALTURA_CHAO - (c.topo + ESPACO_CANO)};
+
+      if(colisaoRetanguloCirculo(canoTopo, passaro) || colisaoRetanguloCirculo(canoBase, passaro)){
+        bater();
+      }
+
+      if(!c.passou && c.x + LARGURA_CANO < passaro.x){
+        c.passou = true;
+        jogo.pontuacao++;
+      }
+
+      if(c.x + LARGURA_CANO < -10) canos.splice(i,1);
+    }
+
+    if(passaro.y + passaro.h/2 >= ALTURA - ALTURA_CHAO){
+      passaro.y = ALTURA - ALTURA_CHAO - passaro.h/2;
+      bater();
+    }
+
+    if(passaro.y - passaro.h/2 < 0){
+      passaro.y = passaro.h/2;
+      passaro.vy = 0;
+    }
+  }
+
+  function bater(){
+    if(!jogo.fim){
+      jogo.fim = true;
+      jogo.rodando = false;
+      if(jogo.pontuacao > jogo.melhor){
+        jogo.melhor = jogo.pontuacao;
+        localStorage.setItem('flappy_best', jogo.melhor);
+      }
+    }
+  }
+
+  function desenhar(){
+    ctx.drawImage(imagens['fundo'], 0, 0, LARGURA, ALTURA);
+
+    for(const c of canos){
+      const topoH = c.topo;
+      const baseY = c.topo + ESPACO_CANO;
+      ctx.drawImage(imagens['cano-topo'], c.x, topoH - imagens['cano-topo'].height);
+      ctx.drawImage(imagens['cano-base'], c.x, baseY);
+    }
+
+    ctx.drawImage(imagens['chao'], 0, ALTURA - ALTURA_CHAO, LARGURA, ALTURA_CHAO);
+
+    ctx.save();
+    ctx.translate(passaro.x, passaro.y);
+    ctx.rotate(passaro.rotacao);
+    ctx.drawImage(imagens['aldair'], -passaro.w/2, -passaro.h/2, passaro.w, passaro.h);
+    ctx.restore();
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(jogo.pontuacao, LARGURA/2, 60);
+    ctx.font = "14px sans-serif";
+    ctx.fillText("Melhor: " + jogo.melhor, LARGURA/2, 85);
+
+    if(!jogo.rodando && !jogo.fim){
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(40, 200, W-80, 100);
+      ctx.fillRect(10, 200, LARGURA-20, 100);
       ctx.fillStyle = '#fff';
-      ctx.font = '20px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Clique ou Espaço para começar', W/2, 255);
+      ctx.font = '24px sans-serif'; 
+      ctx.fillText('Ajude o Aldair a voar por São Paulo!', LARGURA/2, 240); 
+      ctx.font = '20px sans-serif';
+      ctx.fillText('Clique ou pressione Espaço para começar', LARGURA/2, 285);
       ctx.textAlign = 'start';
     }
-    // fundo
-    ctx.drawImage(images['fundo'], 0, 0, W, H);
 
-    // chão
-    ctx.drawImage(images['chao'], 0, H - CHAO_H, W, CHAO_H);
-
-  }
-  
-   function update(){
-    frames++;
-	
-	// TODO:
-    // mover canos e verificar colisão
-
-    // colisão com o chão
-  }
-
-  
-    function loop(){
-    if(game.running && !game.over) update();
-    draw();
-    requestAnimationFrame(loop);
+    if(jogo.fim){
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0,0,LARGURA,ALTURA);
+      ctx.fillStyle = '#fff';
+      ctx.font = '36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Fim de Jogo', LARGURA/2, ALTURA/2 - 20);
+      ctx.font = '20px sans-serif';
+      ctx.fillText('Pontuação: ' + jogo.pontuacao, LARGURA/2, ALTURA/2 + 20);
+      
+      ctx.font = '15px sans-serif';
+      ctx.fillText('Por deixá-lo se ferir, agora você será obrigado a contratá-lo.', LARGURA/2, ALTURA/2 + 55);
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Pressione "G" para acessar o github dele', LARGURA/2, ALTURA/2 + 80);
+      ctx.fillText('ou pressione "R" e tente novamente.', LARGURA/2, ALTURA/2 + 95);
+    }
   }
 
-  // iniciar após carregar imagens
-  loadImages().then(()=>{
-    draw();
-	loop();
+  function ciclo(){
+    if(jogo.rodando && !jogo.fim) atualizar();
+    desenhar();
+    requestAnimationFrame(ciclo);
+  }
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.code === 'Space'){ e.preventDefault(); baterAsa(); }
+    if(e.key.toLowerCase() === 'r'){ reiniciar(); }
+    if(e.key.toLowerCase() === 'g'){ irParaGithub(); }
   });
-  
-  
+  canvas.addEventListener('mousedown', ()=>{ baterAsa(); });
+  canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); baterAsa(); });
 
+  carregarImagens().then(()=>{
+    reiniciar();
+    ciclo();
+  });
   </script>
 </body>
 </html>
